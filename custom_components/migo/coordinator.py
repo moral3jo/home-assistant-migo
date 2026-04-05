@@ -10,9 +10,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import MiGoAPI, MiGoAuthError, MiGoAPIError
-from .const import CONF_HOME_ID, DOMAIN, SCAN_INTERVAL_SECONDS
+from .const import CONF_HOME_ID, DOMAIN, SCAN_INTERVAL_SECONDS, THERM_MODE_SCHEDULE
 
 _LOGGER = logging.getLogger(__name__)
+
+# Module types that carry boiler_status in this white-label firmware
+_BOILER_MODULE_TYPES = {"NATherm1", "NRV", "NAPlug", "NAThermVaillant", "NAVaillant"}
 
 
 class MiGoCoordinator(DataUpdateCoordinator):
@@ -33,6 +36,13 @@ class MiGoCoordinator(DataUpdateCoordinator):
         )
         self.api = api
         self.home_id: str = config_entry.data[CONF_HOME_ID]
+        # The homestatus API does not return the home-level thermostat mode.
+        # We track it locally and update it whenever setthermmode is called.
+        self._tracked_mode: str = THERM_MODE_SCHEDULE
+
+    def set_tracked_mode(self, mode: str) -> None:
+        """Store the mode we just sent to the API so polls don't overwrite it."""
+        self._tracked_mode = mode
 
     async def _async_update_data(self) -> dict:
         """Fetch current home status from the API."""
@@ -55,7 +65,11 @@ class MiGoCoordinator(DataUpdateCoordinator):
                 data={**self.config_entry.data, **token_info},
             )
 
-        return _parse_home_status(home)
+        parsed = _parse_home_status(home)
+        # Inject the locally-tracked mode — the API always returns "home" at
+        # room level regardless of the home-level mode set via setthermmode.
+        parsed["therm_mode"] = self._tracked_mode
+        return parsed
 
 
 def _parse_home_status(home: dict) -> dict:
@@ -66,26 +80,30 @@ def _parse_home_status(home: dict) -> dict:
     # Use the first room's temperatures as the "home" temperature
     current_temperature: float | None = None
     target_temperature: float | None = None
-    therm_mode: str | None = None
 
     for room in rooms.values():
         current_temperature = room.get("therm_measured_temperature")
         target_temperature = room.get("therm_setpoint_temperature")
-        therm_mode = room.get("therm_setpoint_mode")
         break  # Only first room for now
 
-    # Find the relay/thermostat module to get boiler firing status
+    # Find the thermostat module for boiler firing status and outdoor temperature
     boiler_status: bool = False
+    outdoor_temperature: float | None = None
+
     for module in modules.values():
-        if module.get("type") in ("NATherm1", "NRV", "NAPlug"):
-            boiler_status = bool(module.get("boiler_status", False))
-            break
+        mod_type = module.get("type", "")
+        if mod_type in _BOILER_MODULE_TYPES:
+            if "boiler_status" in module:
+                boiler_status = bool(module["boiler_status"])
+        if "outdoor_temperature" in module:
+            outdoor_temperature = module["outdoor_temperature"]
 
     return {
-        "therm_mode": therm_mode,
+        "therm_mode": None,  # filled in by coordinator after injection
         "current_temperature": current_temperature,
         "target_temperature": target_temperature,
         "boiler_status": boiler_status,
+        "outdoor_temperature": outdoor_temperature,
         "rooms": rooms,
         "modules": modules,
     }

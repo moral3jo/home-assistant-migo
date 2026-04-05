@@ -107,10 +107,14 @@ class MiGoClimate(CoordinatorEntity[MiGoCoordinator], ClimateEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         if not self.coordinator.data:
             return {}
-        return {
+        attrs: dict[str, Any] = {
             "boiler_firing": self.coordinator.data.get("boiler_status", False),
             "therm_mode": self.coordinator.data.get("therm_mode"),
         }
+        outdoor = self.coordinator.data.get("outdoor_temperature")
+        if outdoor is not None:
+            attrs["outdoor_temperature"] = outdoor
+        return attrs
 
     # ------------------------------------------------------------------
     # Actions
@@ -137,7 +141,9 @@ class MiGoClimate(CoordinatorEntity[MiGoCoordinator], ClimateEntity):
         except (MiGoAuthError, MiGoAPIError) as err:
             raise HomeAssistantError(f"MiGo: failed to set mode '{mode}': {err}") from err
 
-        # Optimistic update — don't wait the full hour for the state to reflect
+        # Track the mode locally — the API never returns the home-level mode
+        # in homestatus, so we must remember what we set.
+        self.coordinator.set_tracked_mode(mode)
         if self.coordinator.data:
             self.coordinator.data["therm_mode"] = mode
             self.async_write_ha_state()
