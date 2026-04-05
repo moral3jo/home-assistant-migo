@@ -65,6 +65,8 @@ async def get_homes_data(session: aiohttp.ClientSession, token: str) -> dict:
             rooms = h.get("rooms", [])
             modules = h.get("modules", [])
             print(f"    • {h.get('name', '?')} (id={h['id']})  —  {len(rooms)} habitacion(es), {len(modules)} módulo(s)")
+        print("\n  Payload completo (homesdata):")
+        print(json.dumps(body.get("body", {}), indent=4, ensure_ascii=False))
         return body
 
 

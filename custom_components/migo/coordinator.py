@@ -10,7 +10,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import MiGoAPI, MiGoAuthError, MiGoAPIError
-from .const import CONF_HOME_ID, DOMAIN, SCAN_INTERVAL_SECONDS, THERM_MODE_SCHEDULE
+from .const import CONF_HOME_ID, DOMAIN, SCAN_INTERVAL_SECONDS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,26 +36,34 @@ class MiGoCoordinator(DataUpdateCoordinator):
         )
         self.api = api
         self.home_id: str = config_entry.data[CONF_HOME_ID]
-        # The homestatus API does not return the home-level thermostat mode.
-        # We track it locally and update it whenever setthermmode is called.
-        self._tracked_mode: str = THERM_MODE_SCHEDULE
-
-    def set_tracked_mode(self, mode: str) -> None:
-        """Store the mode we just sent to the API so polls don't overwrite it."""
-        self._tracked_mode = mode
 
     async def _async_update_data(self) -> dict:
-        """Fetch current home status from the API."""
+        """Fetch current home status from the API.
+
+        Calls both homesdata (for the home-level therm_mode) and homestatus
+        (for real-time temperatures and boiler status). The mode field is only
+        available in homesdata — homestatus always returns "home" at room level
+        regardless of the actual away/schedule mode.
+        """
         try:
-            data = await self.api.get_home_status(self.home_id)
+            homes_data, status_data = await self.api.get_homes_and_status(self.home_id)
         except MiGoAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except MiGoAPIError as err:
             raise UpdateFailed(f"Error communicating with MiGo API: {err}") from err
 
-        home = data.get("body", {}).get("home", {})
-        if not home:
-            raise UpdateFailed("Unexpected API response: 'home' key missing")
+        # home-level mode lives in homesdata
+        homes = homes_data.get("body", {}).get("homes", [])
+        therm_mode: str | None = None
+        for home_meta in homes:
+            if home_meta.get("id") == self.home_id:
+                therm_mode = home_meta.get("therm_mode")
+                break
+
+        # real-time state lives in homestatus
+        home_status = status_data.get("body", {}).get("home", {})
+        if not home_status:
+            raise UpdateFailed("Unexpected API response: 'home' key missing in homestatus")
 
         # Persist potentially refreshed tokens back into the config entry
         token_info = self.api.get_token_info()
@@ -65,10 +73,8 @@ class MiGoCoordinator(DataUpdateCoordinator):
                 data={**self.config_entry.data, **token_info},
             )
 
-        parsed = _parse_home_status(home)
-        # Inject the locally-tracked mode — the API always returns "home" at
-        # room level regardless of the home-level mode set via setthermmode.
-        parsed["therm_mode"] = self._tracked_mode
+        parsed = _parse_home_status(home_status)
+        parsed["therm_mode"] = therm_mode
         return parsed
 
 
@@ -99,7 +105,7 @@ def _parse_home_status(home: dict) -> dict:
             outdoor_temperature = module["outdoor_temperature"]
 
     return {
-        "therm_mode": None,  # filled in by coordinator after injection
+        "therm_mode": None,  # filled in by coordinator from homesdata
         "current_temperature": current_temperature,
         "target_temperature": target_temperature,
         "boiler_status": boiler_status,

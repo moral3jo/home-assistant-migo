@@ -4,6 +4,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
+import asyncio
+
 import aiohttp
 
 from .const import (
@@ -185,6 +187,19 @@ class MiGoAPI:
     async def get_home_status(self, home_id: str) -> dict:
         """Return real-time state for a specific home."""
         return await self._get("/api/homestatus", params={"home_id": home_id})
+
+    async def get_homes_and_status(self, home_id: str) -> tuple[dict, dict]:
+        """Fetch homesdata and homestatus in parallel.
+
+        homesdata contains the home-level therm_mode (away/schedule/hg).
+        homestatus contains real-time temperatures and boiler status.
+        """
+        await self._ensure_token()
+        homes_data, status_data = await asyncio.gather(
+            self.get_homes_data(),
+            self.get_home_status(home_id),
+        )
+        return homes_data, status_data
 
     async def set_therm_mode(self, home_id: str, mode: str) -> dict:
         """Set the global thermostat mode for a home.
