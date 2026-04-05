@@ -38,11 +38,10 @@ class MiGoCoordinator(DataUpdateCoordinator):
             _LOGGER,
             name=DOMAIN,
             config_entry=config_entry,
-            update_interval=timedelta(seconds=SCAN_INTERVAL_SECONDS),
+            update_interval=self._interval_from_options(config_entry),
         )
         self.api = api
         self.home_id: str = config_entry.data[CONF_HOME_ID]
-        self.update_interval = self._interval_from_options(config_entry)
 
     @staticmethod
     def _interval_from_options(entry: ConfigEntry) -> timedelta:
