@@ -35,5 +35,15 @@
       "already_configured": "Esta casa ya está configurada.",
       "reauth_successful": "Reautenticación correcta."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de MiGo",
+        "data": {
+          "scan_interval": "Intervalo de actualización (minutos)"
+        }
+      }
+    }
   }
 }

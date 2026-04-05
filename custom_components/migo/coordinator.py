@@ -10,7 +10,13 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import MiGoAPI, MiGoAuthError, MiGoAPIError
-from .const import CONF_HOME_ID, DOMAIN, SCAN_INTERVAL_SECONDS
+from .const import (
+    CONF_HOME_ID,
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL_MINUTES,
+    DOMAIN,
+    MIN_SCAN_INTERVAL_MINUTES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +42,15 @@ class MiGoCoordinator(DataUpdateCoordinator):
         )
         self.api = api
         self.home_id: str = config_entry.data[CONF_HOME_ID]
+        self.update_interval = self._interval_from_options(config_entry)
+
+    @staticmethod
+    def _interval_from_options(entry: ConfigEntry) -> timedelta:
+        minutes = max(
+            MIN_SCAN_INTERVAL_MINUTES,
+            entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL_MINUTES),
+        )
+        return timedelta(minutes=minutes)
 
     async def _async_update_data(self) -> dict:
         """Fetch current home status from the API.

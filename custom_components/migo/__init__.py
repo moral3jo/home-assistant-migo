@@ -49,7 +49,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    entry.async_on_unload(entry.add_update_listener(_async_update_options))
     return True
+
+
+async def _async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Apply updated options (e.g. new polling interval) without a full restart."""
+    coordinator: MiGoCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator.update_interval = MiGoCoordinator._interval_from_options(entry)
+    _LOGGER.debug("MiGo: polling interval updated to %s", coordinator.update_interval)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

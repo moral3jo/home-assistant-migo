@@ -18,8 +18,11 @@ CONF_ACCESS_TOKEN = "access_token"
 CONF_REFRESH_TOKEN = "refresh_token"
 CONF_TOKEN_EXPIRES_AT = "token_expires_at"
 
-# Polling interval in seconds — DO NOT lower without testing to avoid bans
-SCAN_INTERVAL_SECONDS = 3600  # 1 hour
+# Polling interval — configurable via the integration options UI
+CONF_SCAN_INTERVAL = "scan_interval"       # key stored in entry.options
+DEFAULT_SCAN_INTERVAL_MINUTES = 60         # default: 1 hour
+MIN_SCAN_INTERVAL_MINUTES = 5             # floor to avoid API bans
+SCAN_INTERVAL_SECONDS = DEFAULT_SCAN_INTERVAL_MINUTES * 60  # legacy fallback
 
 # Netatmo thermostat modes
 THERM_MODE_SCHEDULE = "schedule"  # Home / following programmed schedule
