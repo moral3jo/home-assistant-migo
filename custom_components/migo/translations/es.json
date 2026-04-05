@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Conectar con MiGo",
+        "description": "Introduce las mismas credenciales que usas en la app Saunier Duval MiGo.",
+        "data": {
+          "username": "Email",
+          "password": "Contraseña"
+        }
+      },
+      "pick_home": {
+        "title": "Seleccionar casa",
+        "description": "Se han encontrado varias casas en tu cuenta. Selecciona cuál quieres integrar.",
+        "data": {
+          "home_id": "Casa"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reautenticar MiGo",
+        "description": "La sesión ha caducado. Introduce tus credenciales de nuevo.",
+        "data": {
+          "username": "Email",
+          "password": "Contraseña"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credenciales incorrectas.",
+      "cannot_connect": "No se puede conectar con el servidor MiGo.",
+      "no_homes_found": "No se encontraron casas en esta cuenta.",
+      "unknown": "Error inesperado."
+    },
+    "abort": {
+      "already_configured": "Esta casa ya está configurada.",
+      "reauth_successful": "Reautenticación correcta."
+    }
+  }
+}
