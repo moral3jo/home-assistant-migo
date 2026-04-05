@@ -31,20 +31,19 @@ from .coordinator import MiGoCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 # Map Netatmo thermostat modes → HA HVAC modes
-#   schedule  → AUTO  (at home, following programmed schedule)
-#   away      → OFF   (ausente — caldera en modo ahorro)
-#   hg        → OFF   (anti-hielo, same HA mode, detected via attribute)
+#   schedule / manual / home  → AUTO  (caldera encendida, siguiendo programa)
+#   away / hg                 → OFF   (modo ausente o anti-hielo)
 _NETATMO_TO_HVAC: dict[str, HVACMode] = {
     THERM_MODE_SCHEDULE: HVACMode.AUTO,
     THERM_MODE_AWAY: HVACMode.OFF,
     THERM_MODE_FROST_GUARD: HVACMode.OFF,
-    "manual": HVACMode.HEAT,
+    "manual": HVACMode.AUTO,
+    "home": HVACMode.AUTO,
 }
 
 _HVAC_TO_NETATMO: dict[HVACMode, str] = {
     HVACMode.AUTO: THERM_MODE_SCHEDULE,
     HVACMode.OFF: THERM_MODE_AWAY,
-    HVACMode.HEAT: THERM_MODE_SCHEDULE,
 }
 
 
@@ -63,7 +62,7 @@ class MiGoClimate(CoordinatorEntity[MiGoCoordinator], ClimateEntity):
     _attr_has_entity_name = True
     _attr_name = None  # Use device name as entity name
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF, HVACMode.HEAT]
+    _attr_hvac_modes = [HVACMode.AUTO, HVACMode.OFF]
     _attr_supported_features = ClimateEntityFeature.TURN_ON | ClimateEntityFeature.TURN_OFF
 
     def __init__(self, coordinator: MiGoCoordinator, entry: ConfigEntry) -> None:
