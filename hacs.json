@@ -1,7 +1,5 @@
 {
   "name": "Saunier Duval MiGo",
-  "content_in_root": false,
-  "homeassistant": "2023.1.0",
-  "iot_class": "cloud_polling",
-  "icon": "https://raw.githubusercontent.com/moral3jo/home-assistant-migo/main/icon.png"
+  "render_readme": true,
+  "homeassistant": "2023.1.0"
 }

@@ -8,20 +8,24 @@ Integración no oficial para controlar tu caldera Saunier Duval a través de la 
 
 ## ⚠️ Aviso importante: riesgo de baneo
 
-Los servidores de MiGo/Netatmo **pueden bloquear tu cuenta** si haces demasiadas consultas en poco tiempo. Esta integración está configurada para consultar el estado **una vez cada hora**. No reduzcas este intervalo sin haberlo probado con cuidado.
+Los servidores de MiGo/Netatmo **pueden bloquear tu cuenta** si haces demasiadas consultas en poco tiempo. El intervalo mínimo recomendado es **5 minutos**. Por defecto se consulta cada 60 minutos.
 
 ---
 
 ## Qué puedes hacer
 
 - Ver la temperatura actual y el setpoint de tu termostato
-- Ver si la caldera está quemando en ese momento (`boiler_firing`)
-- Cambiar entre **modo estoy en casa** (programa activo) y **modo ausente**
+- Ver la temperatura exterior (si tu módulo la expone)
+- Activar o desactivar la caldera (modo en casa / modo ausente)
+
+> **No es posible cambiar la temperatura desde HA.** La integración no soporta modificar el setpoint — solo permite activar o desactivar la caldera.
 
 | Modo HVAC en HA | Equivalente en MiGo |
 |---|---|
-| `auto` | Estoy en casa / programa horario activo |
+| `auto` | Estoy en casa — programa horario activo |
 | `off` | Modo ausente |
+
+Los datos de estado (temperatura, modo, caldera encendida/apagada) son atributos de la entidad climate. La caldera nunca se "apaga" del todo — en modo ausente baja al setpoint mínimo configurado en tu programa.
 
 ---
 
@@ -32,7 +36,7 @@ Los servidores de MiGo/Netatmo **pueden bloquear tu cuenta** si haces demasiadas
 3. Categoría: **Integración**
 4. Pulsa **Añadir** → busca "MiGo" → **Descargar**
 5. Reinicia Home Assistant
-6. Ve a **Ajustes → Integraciones → Añadir integración** y busca **Saunier Duval MiGo**
+6. Ve a **Configuración → Dispositivos y servicios → Añadir integración** y busca **Saunier Duval MiGo**
 7. Introduce tu email y contraseña de la app MiGo
 
 ---
@@ -41,7 +45,7 @@ Los servidores de MiGo/Netatmo **pueden bloquear tu cuenta** si haces demasiadas
 
 Una vez instalada y configurada, la integración crea un dispositivo con:
 
-- **Entidad climate** — muestra temperatura actual, setpoint y modo (auto/off). Desde aquí puedes cambiar entre modo activo y ausente.
+- **Entidad climate** — muestra temperatura actual, setpoint, modo y atributos extra (`boiler_firing`, `outdoor_temperature`). Desde aquí puedes cambiar entre modo activo y ausente.
 - **Botón "Actualizar"** — fuerza una consulta inmediata a la API sin esperar el intervalo configurado.
 
 ### Cambiar el intervalo de actualización
@@ -53,10 +57,6 @@ Por defecto la integración consulta la API **cada 60 minutos**. Para cambiarlo:
 Aparece un slider de 5 a 240 minutos. El cambio se aplica al momento sin reiniciar HA.
 
 > No bajes de 5 minutos para evitar que Netatmo bloquee tu cuenta.
-
-### Temperatura exterior
-
-La temperatura exterior (si tu módulo la expone) aparece como atributo extra de la entidad climate. Puedes mostrarla en el dashboard con una tarjeta de tipo **Entidad** apuntando al atributo `outdoor_temperature`.
 
 ---
 
@@ -71,7 +71,9 @@ Copia la carpeta `custom_components/migo/` en tu directorio `<config>/custom_com
 Si quieres verificar que tus credenciales funcionan antes de instalar la integración:
 
 ```bash
-pip install aiohttp
+python -m venv .venv
+.venv/Scripts/pip install aiohttp   # Windows
+# .venv/bin/pip install aiohttp     # Linux/Mac
 python test_api.py
 ```
 
@@ -82,7 +84,7 @@ El script hace login, descarga la topología de tu casa y muestra el estado actu
 ## Notas técnicas
 
 - La plataforma MiGo es una white-label de **Netatmo Energy**. Esta integración usa las credenciales de aplicación extraídas del APK oficial de MiGo. Son credenciales de la *app*, no tuyas — equivalen al "DNI" que la app usa ante los servidores de Netatmo. Tu email y contraseña solo se usan en el momento de configurar la integración.
-- El intervalo de polling por defecto es **60 minutos** y se puede cambiar desde la interfaz de HA sin tocar código (ver sección Uso).
+- El intervalo de polling es configurable entre 5 y 240 minutos desde la interfaz de HA.
 
 ---
 
@@ -92,10 +94,13 @@ El script hace login, descarga la topología de tu casa y muestra el estado actu
 |---|---|
 | Login / reautenticación automática | ✅ |
 | Ver temperatura actual y setpoint | ✅ |
-| Modo ausente / estoy en casa | ✅ |
-| Ver si la caldera está quemando | ✅ |
+| Ver temperatura exterior | ✅ |
+| Activar / desactivar (modo ausente) | ✅ |
+| Estado de la caldera (quemando o no) | ✅ |
+| Botón de actualización manual | ✅ |
+| Intervalo de polling configurable | ✅ |
+| Cambiar temperatura desde HA | ❌ |
 | Control por habitaciones | 🔜 |
-| Sensor de temperatura independiente | 🔜 |
 
 ---
 
